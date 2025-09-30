@@ -1,0 +1,31 @@
+{
+  "name": "streamline-monorepo",
+  "version": "1.0.0",
+  "description": "Multi-tenant workforce management SaaS platform",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "pnpm run --parallel dev",
+    "dev:web": "cd apps/web && pnpm dev",
+    "dev:mobile": "cd apps/mobile && pnpm start",
+    "build": "pnpm run --recursive build",
+    "build:types": "cd packages/shared-types && pnpm build",
+    "test": "pnpm run --recursive test",
+    "lint": "pnpm run --recursive lint",
+    "clean": "pnpm run --recursive clean",
+    "setup": "./setup.sh",
+    "db:reset": "cd packages/db && pnpm reset",
+    "db:migrate": "cd packages/db && pnpm migrate"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  }
+}
