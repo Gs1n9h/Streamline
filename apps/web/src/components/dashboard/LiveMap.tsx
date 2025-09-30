@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
-import { MapPin, User, Clock } from 'lucide-react'
+import { MapPin, User, Clock, Building2 } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 
 // Dynamically import Leaflet components to avoid SSR issues
 const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapContainer), { ssr: false })
@@ -38,14 +39,51 @@ interface LiveMapProps {
 
 export default function LiveMap({ locations, geofences = [], companyId }: LiveMapProps) {
   const [isClient, setIsClient] = useState(false)
+  const [companyLocation, setCompanyLocation] = useState<{ lat: number; lng: number; name: string } | null>(null)
 
   useEffect(() => {
     setIsClient(true)
   }, [])
 
+  // Fetch company default location
+  useEffect(() => {
+    const fetchCompanyLocation = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('companies')
+          .select('name, latitude, longitude')
+          .eq('id', companyId)
+          .single()
+
+        if (error) {
+          console.error('Error fetching company location:', error)
+          return
+        }
+
+        if (data && data.latitude && data.longitude) {
+          setCompanyLocation({
+            lat: data.latitude,
+            lng: data.longitude,
+            name: data.name
+          })
+        }
+      } catch (error) {
+        console.error('Error fetching company location:', error)
+      }
+    }
+
+    if (companyId) {
+      fetchCompanyLocation()
+    }
+  }, [companyId])
+
   // Calculate map center based on locations
   const getMapCenter = () => {
     if (locations.length === 0) {
+      // Use company location if available, otherwise default center
+      if (companyLocation) {
+        return [companyLocation.lat, companyLocation.lng] as [number, number]
+      }
       // Default center (San Francisco)
       return [37.7749, -122.4194] as [number, number]
     }
@@ -66,7 +104,8 @@ export default function LiveMap({ locations, geofences = [], companyId }: LiveMa
   const createCustomIcon = (isActive: boolean) => {
     if (typeof window === 'undefined') return null
     
-    const L = require('leaflet')
+    // Use dynamic import to avoid SSR issues
+    const L = (window as any).L
     
     return L.divIcon({
       className: 'custom-marker',
@@ -117,6 +156,21 @@ export default function LiveMap({ locations, geofences = [], companyId }: LiveMa
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+        
+        {/* Render company location */}
+        {companyLocation && (
+          <Marker position={[companyLocation.lat, companyLocation.lng]}>
+            <Popup>
+              <div className="p-2">
+                <div className="flex items-center space-x-2">
+                  <Building2 className="h-4 w-4 text-blue-600" />
+                  <h3 className="font-semibold text-gray-900">{companyLocation.name}</h3>
+                </div>
+                <p className="text-sm text-gray-600 mt-1">Company Office</p>
+              </div>
+            </Popup>
+          </Marker>
+        )}
         
         {/* Render geofences */}
         {geofences.map((geofence) => (

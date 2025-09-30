@@ -17,6 +17,7 @@ import {
   getCurrencyForCountry
 } from '@/lib/constants'
 import { CheckCircle, Building2, Users, Mail, Settings, ArrowRight, ArrowLeft } from 'lucide-react'
+import AddressLookup from '@/components/AddressLookup'
 
 interface OnboardingData {
   // Step 1: Company Information
@@ -30,6 +31,7 @@ interface OnboardingData {
   country: string
   companyPhone: string
   website: string
+  coordinates?: { lat: number; lng: number }
   
   // Step 2: Admin Profile
   fullName: string
@@ -56,6 +58,7 @@ export default function OnboardingPage() {
   const [currentStep, setCurrentStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [user, setUser] = useState<any>(null)
+  const [manualAddressMode, setManualAddressMode] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
   
@@ -107,7 +110,7 @@ export default function OnboardingPage() {
     getUser()
   }, [router, searchParams])
 
-  const updateFormData = (field: keyof OnboardingData, value: any) => {
+  const updateFormData = (field: keyof OnboardingData, value: string | number | { lat: number; lng: number }) => {
     setFormData(prev => {
       const newData = {
         ...prev,
@@ -187,7 +190,9 @@ export default function OnboardingPage() {
           website: formData.website,
           time_zone: formData.timeZone,
           currency: formData.currency,
-          default_pay_rate: formData.defaultPayRate
+          default_pay_rate: formData.defaultPayRate,
+          latitude: formData.coordinates?.lat,
+          longitude: formData.coordinates?.lng
         })
         .select()
         .single()
@@ -336,25 +341,43 @@ export default function OnboardingPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Street Address
                 </label>
-                <input
-                  type="text"
+                <AddressLookup
                   value={formData.address}
-                  onChange={(e) => updateFormData('address', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="123 Main St"
+                  onChange={(address, coordinates, addressParts) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      address,
+                      coordinates: coordinates || prev.coordinates,
+                      city: addressParts?.city || prev.city,
+                      state: addressParts?.state || prev.state,
+                      postalCode: addressParts?.postalCode || prev.postalCode
+                    }));
+                  }}
+                  placeholder="Start typing your company address..."
+                  manualMode={manualAddressMode}
+                  onManualModeChange={setManualAddressMode}
+                  showManualButton={true}
                 />
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   City
+                  {manualAddressMode && (
+                    <span className="ml-2 text-xs text-orange-600 font-normal">(Manual entry)</span>
+                  )}
                 </label>
                 <input
                   type="text"
                   value={formData.city}
                   onChange={(e) => updateFormData('city', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="New York"
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    manualAddressMode 
+                      ? 'bg-white text-gray-900' 
+                      : 'bg-gray-50 text-gray-600'
+                  }`}
+                  placeholder={manualAddressMode ? "Enter city name" : "Auto-filled from address"}
+                  readOnly={!manualAddressMode}
                 />
               </div>
               
@@ -378,11 +401,19 @@ export default function OnboardingPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     State/Province
+                    {manualAddressMode && (
+                      <span className="ml-2 text-xs text-orange-600 font-normal">(Manual entry)</span>
+                    )}
                   </label>
                   <select
                     value={formData.state}
                     onChange={(e) => updateFormData('state', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      manualAddressMode 
+                        ? 'bg-white text-gray-900' 
+                        : 'bg-gray-50 text-gray-600'
+                    }`}
+                    disabled={!manualAddressMode}
                   >
                     <option value="">Select State/Province</option>
                     {getStatesForCountry().map(state => (
@@ -395,13 +426,21 @@ export default function OnboardingPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Postal Code
+                  {manualAddressMode && (
+                    <span className="ml-2 text-xs text-orange-600 font-normal">(Manual entry)</span>
+                  )}
                 </label>
                 <input
                   type="text"
                   value={formData.postalCode}
                   onChange={(e) => updateFormData('postalCode', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="10001"
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    manualAddressMode 
+                      ? 'bg-white text-gray-900' 
+                      : 'bg-gray-50 text-gray-600'
+                  }`}
+                  placeholder={manualAddressMode ? "Enter postal/zip code" : "Auto-filled from address"}
+                  readOnly={!manualAddressMode}
                 />
               </div>
               
@@ -688,7 +727,7 @@ export default function OnboardingPage() {
                   onClick={handleComplete}
                   className="text-blue-600 hover:text-blue-800 text-sm"
                 >
-                  Skip for now - I'll add employees later
+                  Skip for now - I&apos;ll add employees later
                 </button>
               </div>
             </div>
