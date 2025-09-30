@@ -247,7 +247,7 @@ export default function Reports({ companyId }: ReportsProps) {
                         Total Hours
                       </dt>
                       <dd className="text-lg font-medium text-gray-900">
-                        {summaryData?.total_hours || 0}
+                        {(summaryData?.total_hours || 0).toFixed(2)}
                       </dd>
                     </dl>
                   </div>
@@ -267,7 +267,7 @@ export default function Reports({ companyId }: ReportsProps) {
                         Total Cost
                       </dt>
                       <dd className="text-lg font-medium text-gray-900">
-                        ${summaryData?.total_cost || 0}
+                        ${(summaryData?.total_cost || 0).toFixed(2)}
                       </dd>
                     </dl>
                   </div>

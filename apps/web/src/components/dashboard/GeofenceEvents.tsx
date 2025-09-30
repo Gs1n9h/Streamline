@@ -15,12 +15,25 @@ interface GeofenceEvent {
   created_at: string
 }
 
+interface Employee {
+  staff_id: string
+  staff_name: string
+  role: string
+}
+
+interface Geofence {
+  id: string
+  name: string
+}
+
 interface GeofenceEventsProps {
   companyId: string
 }
 
 export default function GeofenceEvents({ companyId }: GeofenceEventsProps) {
   const [events, setEvents] = useState<GeofenceEvent[]>([])
+  const [employees, setEmployees] = useState<Employee[]>([])
+  const [geofences, setGeofences] = useState<Geofence[]>([])
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState({
     userId: '',
@@ -30,8 +43,40 @@ export default function GeofenceEvents({ companyId }: GeofenceEventsProps) {
   })
 
   useEffect(() => {
+    loadEmployees()
+    loadGeofences()
+  }, [companyId])
+
+  useEffect(() => {
     loadEvents()
   }, [companyId, filters])
+
+  const loadEmployees = async () => {
+    try {
+      const { data, error } = await supabase.rpc('get_company_staff', {
+        p_company_id: companyId
+      })
+      if (error) throw error
+      setEmployees(data || [])
+    } catch (error) {
+      console.error('Error loading employees:', error)
+    }
+  }
+
+  const loadGeofences = async () => {
+    try {
+      const { data, error } = await supabase
+        .schema('streamline')
+        .from('geofences')
+        .select('id, name')
+        .eq('company_id', companyId)
+        .eq('is_active', true)
+      if (error) throw error
+      setGeofences(data || [])
+    } catch (error) {
+      console.error('Error loading geofences:', error)
+    }
+  }
 
   const loadEvents = async () => {
     try {
@@ -137,7 +182,11 @@ export default function GeofenceEvents({ companyId }: GeofenceEventsProps) {
               className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
             >
               <option value="">All Employees</option>
-              {/* TODO: Add employee options */}
+              {employees.map((employee) => (
+                <option key={employee.staff_id} value={employee.staff_id}>
+                  {employee.staff_name} ({employee.role})
+                </option>
+              ))}
             </select>
           </div>
           
@@ -149,7 +198,11 @@ export default function GeofenceEvents({ companyId }: GeofenceEventsProps) {
               className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
             >
               <option value="">All Geofences</option>
-              {/* TODO: Add geofence options */}
+              {geofences.map((geofence) => (
+                <option key={geofence.id} value={geofence.id}>
+                  {geofence.name}
+                </option>
+              ))}
             </select>
           </div>
         </div>
