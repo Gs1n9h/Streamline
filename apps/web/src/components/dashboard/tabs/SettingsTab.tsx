@@ -731,36 +731,6 @@ export default function SettingsTab({ companyId, onSettingsUpdate }: SettingsTab
           </div>
         )}
 
-        {/* Geofencing Toggle */}
-        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-          <div className="flex items-center">
-            <MapPin className="h-5 w-5 text-gray-400 mr-3" />
-            <div>
-              <h4 className="text-sm font-medium text-gray-900">Geofencing</h4>
-              <p className="text-sm text-gray-500">
-                Enable automatic geofence enter/exit detection
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => updateLocationSettings('geofencing_enabled', !locationSettings.geofencing_enabled)}
-            disabled={!locationSettings.location_tracking_enabled}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
-              locationSettings.geofencing_enabled ? 'bg-indigo-600' : 'bg-gray-200'
-            }`}
-          >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                locationSettings.geofencing_enabled ? 'translate-x-6' : 'translate-x-1'
-              }`}
-            />
-          </button>
-        </div>
-        {!locationSettings.location_tracking_enabled && (
-          <p className="text-xs text-gray-500 mt-2">
-            Enable location tracking first to use geofencing
-          </p>
-        )}
 
         {/* Information Panel */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -784,7 +754,49 @@ export default function SettingsTab({ companyId, onSettingsUpdate }: SettingsTab
           <Navigation className="w-6 h-6 text-green-600 mr-3" />
           <h2 className="text-xl font-semibold text-gray-900">Geofencing Management</h2>
         </div>
-        <GeofenceManagement companyId={companyId} />
+
+        {/* Geofencing Enable/Disable Toggle */}
+        <div className="bg-white shadow rounded-lg p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <Navigation className="h-5 w-5 text-green-600 mr-3" />
+              <div>
+                <h4 className="text-sm font-medium text-gray-900">Enable Geofencing</h4>
+                <p className="text-sm text-gray-500">
+                  Enable automatic geofence enter/exit detection
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => updateLocationSettings('geofencing_enabled', !locationSettings.geofencing_enabled)}
+              disabled={!locationSettings.location_tracking_enabled}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                locationSettings.geofencing_enabled ? 'bg-green-600' : 'bg-gray-200'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  locationSettings.geofencing_enabled ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+          {!locationSettings.location_tracking_enabled && (
+            <p className="text-xs text-red-600 mt-2">
+              ⚠️ Location tracking must be enabled first to use geofencing
+            </p>
+          )}
+          {locationSettings.location_tracking_enabled && !locationSettings.geofencing_enabled && (
+            <p className="text-xs text-gray-500 mt-2">
+              Enable geofencing to create and manage geofences
+            </p>
+          )}
+        </div>
+
+        <GeofenceManagement 
+          companyId={companyId} 
+          geofencingEnabled={locationSettings.geofencing_enabled}
+        />
       </div>
     )
   }
