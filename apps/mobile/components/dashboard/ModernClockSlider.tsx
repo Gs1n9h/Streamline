@@ -82,19 +82,28 @@ export default function ModernClockSlider({
   const onGestureEvent = (event: any) => {
     const { translationX } = event.nativeEvent;
     
-    // Calculate precise boundaries
+    // Calculate precise boundaries with visual margins
     const containerPadding = 32; // sliderWrapper padding (16 * 2)
     const trackPadding = 8; // sliderTrack paddingHorizontal (4 * 2)
     const thumbWidth = 48;
     const thumbStartPosition = 4; // Initial left position
+    const trackBorderRadius = 28; // From styles
+    const visualMargin = trackBorderRadius - 4; // Keep thumb inside rounded edges
     
-    // Available space for thumb to move
-    const availableWidth = sliderWidth - containerPadding - trackPadding - thumbWidth;
+    // Available space for thumb to move (accounting for rounded corners)
+    const availableWidth = sliderWidth - containerPadding - trackPadding - thumbWidth - (visualMargin * 2);
     const maxRightSlide = availableWidth - thumbStartPosition;
     const maxLeftSlide = -(availableWidth - thumbStartPosition);
     
-    // Strictly constrain translation within bounds
-    const constrainedTranslation = Math.max(maxLeftSlide, Math.min(maxRightSlide, translationX));
+    // Direction-based constraints: only allow movement in the correct direction
+    let constrainedTranslation;
+    if (isClockedIn) {
+      // When clocked in, only allow LEFT swipes (negative translation)
+      constrainedTranslation = Math.max(maxLeftSlide, Math.min(0, translationX));
+    } else {
+      // When clocked out, only allow RIGHT swipes (positive translation)
+      constrainedTranslation = Math.max(0, Math.min(maxRightSlide, translationX));
+    }
     
     // Force the animation value to stay within bounds
     translateX.setValue(constrainedTranslation);
@@ -109,17 +118,27 @@ export default function ModernClockSlider({
       const trackPadding = 8;
       const thumbWidth = 48;
       const thumbStartPosition = 4;
+      const trackBorderRadius = 28;
+      const visualMargin = trackBorderRadius - 4;
       
-      const availableWidth = sliderWidth - containerPadding - trackPadding - thumbWidth;
+      const availableWidth = sliderWidth - containerPadding - trackPadding - thumbWidth - (visualMargin * 2);
       const maxRightSlide = availableWidth - thumbStartPosition;
       const maxLeftSlide = -(availableWidth - thumbStartPosition);
       
-      // Constrain translation within bounds
-      const constrainedTranslation = Math.max(maxLeftSlide, Math.min(maxRightSlide, translationX));
+      // Direction-based constraints
+      let constrainedTranslation;
+      if (isClockedIn) {
+        // When clocked in, only allow LEFT swipes
+        constrainedTranslation = Math.max(maxLeftSlide, Math.min(0, translationX));
+      } else {
+        // When clocked out, only allow RIGHT swipes
+        constrainedTranslation = Math.max(0, Math.min(maxRightSlide, translationX));
+      }
       
       let actionTriggered = false;
       let targetPosition = 0; // Default: reset to center
       
+      // Only process right swipes when clocked out
       if (constrainedTranslation > maxRightSlide * 0.7 && !isClockedIn) {
         // Swipe right to clock in (70% threshold for better UX)
         actionTriggered = true;
@@ -152,7 +171,9 @@ export default function ModernClockSlider({
             }, 300);
           });
         }
-      } else if (constrainedTranslation < maxLeftSlide * 0.7 && isClockedIn) {
+      }
+      // Only process left swipes when clocked in
+      else if (constrainedTranslation < maxLeftSlide * 0.7 && isClockedIn) {
         // Swipe left to clock out (70% threshold)
         actionTriggered = true;
         targetPosition = maxLeftSlide; // Stick to the left
