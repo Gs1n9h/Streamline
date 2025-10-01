@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Animated,
   Dimensions,
+  Vibration,
 } from 'react-native';
 import { PanGestureHandler, State } from 'react-native-gesture-handler';
 import { Job } from '../../types';
@@ -71,6 +72,10 @@ export default function ModernClockSlider({
   const handleClockIn = (jobId: string) => {
     setShowJobModal(false);
     onClockIn(jobId);
+    // Reset slider after job selection
+    setTimeout(() => {
+      translateX.setValue(0);
+    }, 300);
   };
 
 
@@ -112,25 +117,73 @@ export default function ModernClockSlider({
       // Constrain translation within bounds
       const constrainedTranslation = Math.max(maxLeftSlide, Math.min(maxRightSlide, translationX));
       
-      if (constrainedTranslation > maxRightSlide * 0.6 && !isClockedIn) {
-        // Swipe right to clock in (60% of max slide)
+      let actionTriggered = false;
+      let targetPosition = 0; // Default: reset to center
+      
+      if (constrainedTranslation > maxRightSlide * 0.7 && !isClockedIn) {
+        // Swipe right to clock in (70% threshold for better UX)
+        actionTriggered = true;
+        targetPosition = maxRightSlide; // Stick to the right
+        
+        // Haptic feedback
+        Vibration.vibrate(50);
+        
         if (jobSelectionRequired && jobs.length > 0) {
+          // Animate to end position
+          Animated.spring(translateX, {
+            toValue: targetPosition,
+            tension: 100,
+            friction: 8,
+            useNativeDriver: true,
+          }).start();
           setShowJobModal(true);
         } else {
-          // No job selection required, clock in directly
-          onClockIn(null);
+          // Animate to end position and clock in
+          Animated.spring(translateX, {
+            toValue: targetPosition,
+            tension: 100,
+            friction: 8,
+            useNativeDriver: true,
+          }).start(() => {
+            // After animation, clock in and reset
+            onClockIn(null);
+            setTimeout(() => {
+              translateX.setValue(0);
+            }, 300);
+          });
         }
-      } else if (constrainedTranslation < maxLeftSlide * 0.6 && isClockedIn) {
-        // Swipe left to clock out (60% of max slide)
-        // No confirmation needed - user already slid
-        onClockOut();
+      } else if (constrainedTranslation < maxLeftSlide * 0.7 && isClockedIn) {
+        // Swipe left to clock out (70% threshold)
+        actionTriggered = true;
+        targetPosition = maxLeftSlide; // Stick to the left
+        
+        // Haptic feedback
+        Vibration.vibrate(50);
+        
+        // Animate to end position and clock out
+        Animated.spring(translateX, {
+          toValue: targetPosition,
+          tension: 100,
+          friction: 8,
+          useNativeDriver: true,
+        }).start(() => {
+          // After animation, clock out and reset
+          onClockOut();
+          setTimeout(() => {
+            translateX.setValue(0);
+          }, 300);
+        });
       }
       
-      // Reset position
-      Animated.spring(translateX, {
-        toValue: 0,
-        useNativeDriver: true,
-      }).start();
+      // If action not triggered, reset to center with spring animation
+      if (!actionTriggered) {
+        Animated.spring(translateX, {
+          toValue: 0,
+          tension: 100,
+          friction: 8,
+          useNativeDriver: true,
+        }).start();
+      }
     }
   };
 
