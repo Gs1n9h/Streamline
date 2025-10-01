@@ -4,17 +4,10 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { User, Edit, Save, X, DollarSign, UserPlus, Mail } from 'lucide-react'
+import EmployeeDetail from './employee-detail/EmployeeDetail'
+import { Employee } from '@/types/employee'
 
-interface Employee {
-  user_id: string
-  full_name: string
-  role: 'admin' | 'staff'
-  pay_rate: number
-  pay_period: string
-  type: 'employee' | 'invitation'
-  status?: string
-  email?: string
-}
+// Employee interface moved to types/employee.ts
 
 interface EmployeesProps {
   companyId: string
@@ -22,7 +15,9 @@ interface EmployeesProps {
 
 export default function Employees({ companyId }: EmployeesProps) {
   const { user } = useAuth()
-  const [employees, setEmployees] = useState<Employee[]>([])
+  const [employees, setEmployees] = useState<Employee[]>([])  
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<'list' | 'detail'>('list')
   const [loading, setLoading] = useState(true)
   const [editingEmployee, setEditingEmployee] = useState<string | null>(null)
   const [editPayRate, setEditPayRate] = useState<string>('')
@@ -36,6 +31,20 @@ export default function Employees({ companyId }: EmployeesProps) {
     payPeriod: 'hourly'
   })
   const [inviting, setInviting] = useState(false)
+
+  // Navigation handlers
+  const handleEmployeeClick = (employeeId: string, employeeType: string) => {
+    // Only allow navigation for actual employees, not invitations
+    if (employeeType === 'employee') {
+      setSelectedEmployeeId(employeeId)
+      setViewMode('detail')
+    }
+  }
+
+  const handleBackToList = () => {
+    setSelectedEmployeeId(null)
+    setViewMode('list')
+  }
 
   const fetchEmployees = async () => {
     try {
@@ -221,8 +230,11 @@ export default function Employees({ companyId }: EmployeesProps) {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white shadow rounded-lg p-6">
+      {/* Show employee list only when not in detail view */}
+      {viewMode === 'list' && (
+        <>
+          {/* Header */}
+          <div className="bg-white shadow rounded-lg p-6">
         <div className="flex justify-between items-center mb-4">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Employee Management</h2>
@@ -274,7 +286,13 @@ export default function Employees({ companyId }: EmployeesProps) {
                 </tr>
               ) : (
                 employees.map((employee) => (
-                  <tr key={employee.user_id} className={employee.type === 'invitation' ? 'bg-yellow-50' : ''}>
+                  <tr 
+                    key={employee.user_id} 
+                    className={`${employee.type === 'invitation' ? 'bg-yellow-50' : ''} ${
+                      employee.type === 'employee' ? 'hover:bg-gray-50 cursor-pointer' : ''
+                    }`}
+                    onClick={() => handleEmployeeClick(employee.user_id, employee.type)}
+                  >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10">
@@ -507,6 +525,17 @@ export default function Employees({ companyId }: EmployeesProps) {
             </div>
           </div>
         </div>
+      )}
+        </>
+      )}
+
+      {/* Conditional rendering based on view mode */}
+      {viewMode === 'detail' && selectedEmployeeId && (
+        <EmployeeDetail
+          employeeId={selectedEmployeeId}
+          companyId={companyId}
+          onBack={handleBackToList}
+        />
       )}
     </div>
   )
