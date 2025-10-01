@@ -107,6 +107,9 @@ export default function LiveMap({ locations, geofences = [], companyId }: LiveMa
     // Use dynamic import to avoid SSR issues
     const L = (window as any).L
     
+    // Check if Leaflet is loaded
+    if (!L || !L.divIcon) return null
+    
     return L.divIcon({
       className: 'custom-marker',
       html: `
@@ -204,12 +207,14 @@ export default function LiveMap({ locations, geofences = [], companyId }: LiveMa
         ))}
         
         {/* Render employee locations */}
-        {locations.map((location) => (
-          <Marker
-            key={location.user_id}
-            position={[location.latitude, location.longitude]}
-            icon={createCustomIcon(true)}
-          >
+        {locations.map((location) => {
+          const icon = createCustomIcon(true)
+          return (
+            <Marker
+              key={location.user_id}
+              position={[location.latitude, location.longitude]}
+              {...(icon && { icon })}
+            >
             <Popup>
               <div className="p-2 min-w-[200px]">
                 <div className="flex items-center mb-2">
@@ -238,7 +243,8 @@ export default function LiveMap({ locations, geofences = [], companyId }: LiveMa
               </div>
             </Popup>
           </Marker>
-        ))}
+          )
+        })}
       </MapContainer>
     </div>
   )
