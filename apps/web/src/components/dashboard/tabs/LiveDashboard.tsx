@@ -34,6 +34,23 @@ export default function LiveDashboard({ companyId }: LiveDashboardProps) {
   const [geofences, setGeofences] = useState<Geofence[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [geofencingEnabled, setGeofencingEnabled] = useState(true)
+
+  const fetchCompanySettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .schema('streamline')
+        .from('companies')
+        .select('geofencing_enabled')
+        .eq('id', companyId)
+        .single()
+
+      if (error) throw error
+      setGeofencingEnabled(data?.geofencing_enabled ?? true)
+    } catch (err: any) {
+      console.error('Error fetching company settings:', err)
+    }
+  }
 
   const fetchLatestLocations = async () => {
     try {
@@ -58,15 +75,24 @@ export default function LiveDashboard({ companyId }: LiveDashboardProps) {
 
       if (error) throw error
       setGeofences(data || [])
-    } catch (err: any) {
       console.error('Error fetching geofences:', err)
     }
   }
 
   useEffect(() => {
+    fetchCompanySettings()
     fetchLatestLocations()
     fetchGeofences()
 
+    // Set up polling for live updates
+    const interval = setInterval(() => {
+      fetchLatestLocations()
+    }, 30000) // Poll every 30 seconds
+
+    return () => clearInterval(interval)
+  }, [companyId])
+
+  useEffect(() => {
     // Set up real-time subscription for location updates
     const subscription = supabase
       .channel('live_locations')
@@ -171,10 +197,12 @@ export default function LiveDashboard({ companyId }: LiveDashboardProps) {
         )}
       </div>
 
-      {/* Geofence Events */}
-      <div className="bg-white shadow rounded-lg p-6">
-        <GeofenceEvents companyId={companyId} />
-      </div>
+      {/* Geofence Events - Only show if geofencing is enabled */}
+      {geofencingEnabled && (
+        <div className="bg-white shadow rounded-lg p-6">
+          <GeofenceEvents companyId={companyId} />
+        </div>
+      )}
     </div>
   )
 }
