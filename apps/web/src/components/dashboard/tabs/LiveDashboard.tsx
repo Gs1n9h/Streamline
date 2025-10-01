@@ -75,6 +75,7 @@ export default function LiveDashboard({ companyId }: LiveDashboardProps) {
 
       if (error) throw error
       setGeofences(data || [])
+    } catch (err: any) {
       console.error('Error fetching geofences:', err)
     }
   }
