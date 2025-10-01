@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/components/auth/AuthProvider'
+import { supabase } from '@/lib/supabase'
 import { 
   Users, 
   Clock, 
@@ -26,24 +27,77 @@ interface AdminDashboardProps {
   onCompanyChange: (companyId: string) => void
 }
 
+interface CompanySettings {
+  job_tracking_enabled: boolean
+}
+
 type AdminTab = 'live-dashboard' | 'timesheet-payroll' | 'reports' | 'employees' | 'jobs' | 'billing' | 'settings'
 
 export default function AdminDashboard({ companyId, companies, onCompanyChange }: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState<AdminTab>('live-dashboard')
+  const [companySettings, setCompanySettings] = useState<CompanySettings>({ job_tracking_enabled: true })
+  const [settingsLoading, setSettingsLoading] = useState(true)
   const { signOut } = useAuth()
 
-  const tabs = [
+  // Load company settings when companyId changes
+  useEffect(() => {
+    if (companyId) {
+      loadCompanySettings()
+    }
+  }, [companyId])
+
+  const loadCompanySettings = async () => {
+    try {
+      setSettingsLoading(true)
+      const { data, error } = await supabase
+        .schema('streamline')
+        .from('companies')
+        .select('job_tracking_enabled')
+        .eq('id', companyId)
+        .single()
+
+      if (error) throw error
+      
+      setCompanySettings({
+        job_tracking_enabled: data?.job_tracking_enabled ?? true
+      })
+
+      // If jobs tab is active but job tracking is disabled, switch to live dashboard
+      if (activeTab === 'jobs' && !data?.job_tracking_enabled) {
+        setActiveTab('live-dashboard')
+      }
+    } catch (error) {
+      console.error('Error loading company settings:', error)
+      // Default to enabled if there's an error
+      setCompanySettings({ job_tracking_enabled: true })
+    } finally {
+      setSettingsLoading(false)
+    }
+  }
+
+  const allTabs = [
     { id: 'live-dashboard', label: 'Live Dashboard', icon: Map },
     { id: 'timesheet-payroll', label: 'Timesheet & Payroll', icon: Clock },
     { id: 'reports', label: 'Reports', icon: FileText },
     { id: 'employees', label: 'Employees', icon: Users },
-    { id: 'jobs', label: 'Jobs', icon: Building },
+    { id: 'jobs', label: 'Jobs', icon: Building, condition: () => companySettings.job_tracking_enabled },
     { id: 'billing', label: 'Billing', icon: CreditCard },
     { id: 'settings', label: 'Settings', icon: Settings },
   ]
 
+  // Filter tabs based on conditions
+  const tabs = allTabs.filter(tab => !tab.condition || tab.condition())
+
   const handleSignOut = async () => {
     await signOut()
+  }
+
+  const handleTabChange = (tabId: AdminTab) => {
+    // Prevent switching to jobs tab if job tracking is disabled
+    if (tabId === 'jobs' && !companySettings.job_tracking_enabled) {
+      return
+    }
+    setActiveTab(tabId)
   }
 
   const renderTabContent = () => {
@@ -61,7 +115,7 @@ export default function AdminDashboard({ companyId, companies, onCompanyChange }
       case 'billing':
         return <BillingDashboard companyId={companyId} />
       case 'settings':
-        return <SettingsTab companyId={companyId} />
+        return <SettingsTab companyId={companyId} onSettingsUpdate={loadCompanySettings} />
       default:
         return <LiveDashboard companyId={companyId} />
     }
@@ -109,7 +163,7 @@ export default function AdminDashboard({ companyId, companies, onCompanyChange }
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id as AdminTab)}
+                  onClick={() => handleTabChange(tab.id as AdminTab)}
                   className={`flex items-center px-1 py-4 text-sm font-medium border-b-2 ${
                     activeTab === tab.id
                       ? 'border-indigo-500 text-indigo-600'
