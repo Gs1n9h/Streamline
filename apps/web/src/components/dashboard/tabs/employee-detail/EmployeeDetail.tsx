@@ -30,12 +30,14 @@ export default function EmployeeDetail({ employeeId, companyId, onBack }: Employ
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<EmployeeDetailTab>('overview')
   const [error, setError] = useState<string | null>(null)
+  const [jobTrackingEnabled, setJobTrackingEnabled] = useState(true)
 
+  // Dynamically build tabs based on company settings
   const tabs = [
     { id: 'overview', label: 'Overview', icon: User },
     { id: 'compensation', label: 'Compensation', icon: DollarSign },
     { id: 'timesheets', label: 'Timesheets', icon: Clock },
-    { id: 'jobs', label: 'Job Assignments', icon: Briefcase },
+    ...(jobTrackingEnabled ? [{ id: 'jobs', label: 'Job Assignments', icon: Briefcase }] : []),
     { id: 'activity', label: 'Activity', icon: Activity },
     { id: 'settings', label: 'Settings', icon: Settings },
   ]
@@ -46,10 +48,29 @@ export default function EmployeeDetail({ employeeId, companyId, onBack }: Employ
     }
   }, [employeeId, companyId])
 
+  // Auto-switch tab if job tracking is disabled and user is on jobs tab
+  useEffect(() => {
+    if (!jobTrackingEnabled && activeTab === 'jobs') {
+      setActiveTab('overview')
+    }
+  }, [jobTrackingEnabled, activeTab])
+
   const loadEmployeeDetail = async () => {
     try {
       setLoading(true)
       setError(null)
+
+      // Fetch company settings to determine if job tracking is enabled
+      const { data: companyData } = await supabase
+        .schema('streamline')
+        .from('companies')
+        .select('job_tracking_enabled')
+        .eq('id', companyId)
+        .single()
+
+      if (companyData) {
+        setJobTrackingEnabled(companyData.job_tracking_enabled ?? true)
+      }
 
       // Fetch employee basic info
       const { data: employeeData, error: employeeError } = await supabase
@@ -223,6 +244,10 @@ export default function EmployeeDetail({ employeeId, companyId, onBack }: Employ
       case 'timesheets':
         return <TimesheetsTab employee={employee} companyId={companyId} />
       case 'jobs':
+        // Only show job assignments if job tracking is enabled
+        if (!jobTrackingEnabled) {
+          return <OverviewTab employee={employee} companyId={companyId} />
+        }
         return <JobAssignmentsTab employee={employee} companyId={companyId} onUpdate={handleEmployeeUpdate} />
       case 'activity':
         return <ActivityTab employee={employee} companyId={companyId} />
