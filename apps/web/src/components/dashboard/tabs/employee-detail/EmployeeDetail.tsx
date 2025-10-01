@@ -72,16 +72,20 @@ export default function EmployeeDetail({ employeeId, companyId, onBack }: Employ
 
       if (employeeError) throw employeeError
 
-      // Get email from auth.users (we'll use a simpler approach since admin API might not be available)
-      // For now, we'll leave email empty and can enhance this later
+      // Get email from profiles table instead of admin API (which is not accessible client-side)
       let userEmail = ''
       try {
-        // Try to get email if available, but don't fail if not accessible
-        const { data: { user: authUser } } = await supabase.auth.admin.getUserById(employeeId)
-        userEmail = authUser?.email || ''
+        const { data: profileData } = await supabase
+          .schema('streamline')
+          .from('profiles')
+          .select('email')
+          .eq('id', employeeId)
+          .single()
+        
+        userEmail = profileData?.email || ''
       } catch (error) {
-        console.log('Could not fetch user email:', error)
-        // This is expected in client-side code, we'll handle it gracefully
+        console.log('Could not fetch user email from profiles:', error)
+        // Email will remain empty if not found
       }
       
       // Calculate stats (we'll use basic queries for now, can optimize later)

@@ -637,6 +637,57 @@ CREATE TRIGGER create_company_subscription
   FOR EACH ROW
   EXECUTE FUNCTION streamline.create_default_subscription();
 
+-- ========= EMPLOYEE INVITATIONS SYSTEM =========
+
+-- Employee invitations table
+CREATE TABLE IF NOT EXISTS streamline.employee_invitations (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id    UUID NOT NULL REFERENCES streamline.companies(id) ON DELETE CASCADE,
+  email         TEXT NOT NULL,
+  full_name     TEXT NOT NULL,
+  role          TEXT NOT NULL CHECK (role IN ('admin', 'staff')),
+  pay_rate      NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+  pay_period    TEXT NOT NULL DEFAULT 'hourly' CHECK (pay_period IN ('hourly')),
+  status        TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'expired', 'cancelled')),
+  token         UUID DEFAULT gen_random_uuid(),
+  invited_by    UUID NOT NULL REFERENCES streamline.profiles(id),
+  invited_at    TIMESTAMPTZ DEFAULT NOW(),
+  expires_at    TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '7 days'),
+  accepted_at   TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for employee invitations
+CREATE INDEX IF NOT EXISTS idx_employee_invitations_company_id ON streamline.employee_invitations (company_id);
+CREATE INDEX IF NOT EXISTS idx_employee_invitations_email ON streamline.employee_invitations (email);
+CREATE INDEX IF NOT EXISTS idx_employee_invitations_status ON streamline.employee_invitations (status);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_employee_invitations_unique_pending 
+ON streamline.employee_invitations (company_id, email) 
+WHERE status = 'pending';
+
+-- Enable RLS for employee invitations
+ALTER TABLE streamline.employee_invitations ENABLE ROW LEVEL SECURITY;
+
+-- RLS policies for employee invitations
+CREATE POLICY "Users can view invitations for their companies" ON streamline.employee_invitations
+  FOR SELECT USING (
+    company_id IN (
+      SELECT company_id 
+      FROM streamline.company_members 
+      WHERE user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Admins can manage invitations for their companies" ON streamline.employee_invitations
+  FOR ALL USING (
+    company_id IN (
+      SELECT company_id 
+      FROM streamline.company_members 
+      WHERE user_id = auth.uid() AND role = 'admin'
+    )
+  );
+
 -- ========= SEED DATA =========
 
 -- Insert default subscription plans

@@ -8,7 +8,7 @@ export interface Employee {
   pay_rate: number
   pay_period: string
   type: 'employee' | 'invitation'
-  status?: string
+  status?: 'active' | 'inactive' | 'pending' | 'expired' | 'cancelled'
   created_at?: string
   last_active?: string
 }

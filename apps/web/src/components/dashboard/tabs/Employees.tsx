@@ -15,10 +15,11 @@ interface EmployeesProps {
 
 export default function Employees({ companyId }: EmployeesProps) {
   const { user } = useAuth()
-  const [employees, setEmployees] = useState<Employee[]>([])  
+  const [employees, setEmployees] = useState<Employee[]>([])
+  const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState<'all' | 'active' | 'inactive' | 'pending'>('all')
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<'list' | 'detail'>('list')
-  const [loading, setLoading] = useState(true)
   const [editingEmployee, setEditingEmployee] = useState<string | null>(null)
   const [editPayRate, setEditPayRate] = useState<string>('')
   const [saving, setSaving] = useState(false)
@@ -65,24 +66,23 @@ export default function Employees({ companyId }: EmployeesProps) {
 
       if (employeesError) throw employeesError
 
-      // TODO: Fetch pending invitations (table doesn't exist yet)
-      // const { data: invitationsData, error: invitationsError } = await supabase
-      //   .schema('streamline')
-      //   .from('employee_invitations')
-      //   .select(`
-      //     id,
-      //     email,
-      //     full_name,
-      //     role,
-      //     pay_rate,
-      //     pay_period,
-      //     status
-      //   `)
-      //   .eq('company_id', companyId)
-      //   .eq('status', 'pending')
+      // Fetch pending invitations
+      const { data: invitationsData, error: invitationsError } = await supabase
+        .schema('streamline')
+        .from('employee_invitations')
+        .select(`
+          id,
+          email,
+          full_name,
+          role,
+          pay_rate,
+          pay_period,
+          status
+        `)
+        .eq('company_id', companyId)
+        .eq('status', 'pending')
 
-      // if (invitationsError) throw invitationsError
-      const invitationsData = [] // Placeholder until table is created
+      if (invitationsError) throw invitationsError
 
       // Format existing employees
       const formattedEmployees = employeesData?.map(emp => ({
@@ -91,7 +91,8 @@ export default function Employees({ companyId }: EmployeesProps) {
         role: emp.role,
         pay_rate: emp.pay_rate,
         pay_period: emp.pay_period,
-        type: 'employee' as const
+        type: 'employee' as const,
+        status: 'active' as const // All existing employees are active
       })) || []
 
       // Format pending invitations
@@ -107,7 +108,28 @@ export default function Employees({ companyId }: EmployeesProps) {
       })) || []
 
       // Combine employees and invitations
-      setEmployees([...formattedEmployees, ...formattedInvitations])
+      const allEmployees = [...formattedEmployees, ...formattedInvitations]
+      
+      // Apply filter
+      let filteredEmployees = allEmployees
+      switch (filter) {
+        case 'active':
+          filteredEmployees = allEmployees.filter(emp => emp.type === 'employee')
+          break
+        case 'inactive':
+          // For now, we don't have inactive employees, but this is where they would be filtered
+          filteredEmployees = allEmployees.filter(emp => emp.status === 'inactive')
+          break
+        case 'pending':
+          filteredEmployees = allEmployees.filter(emp => emp.type === 'invitation')
+          break
+        case 'all':
+        default:
+          filteredEmployees = allEmployees
+          break
+      }
+      
+      setEmployees(filteredEmployees)
     } catch (error) {
       console.error('Error fetching employees:', error)
     } finally {
@@ -116,8 +138,10 @@ export default function Employees({ companyId }: EmployeesProps) {
   }
 
   useEffect(() => {
-    fetchEmployees()
-  }, [companyId])
+    if (companyId && filter) {
+      fetchEmployees()
+    }
+  }, [companyId, filter])
 
   const startEdit = (employee: Employee) => {
     if (employee.type === 'invitation') {
@@ -173,8 +197,26 @@ export default function Employees({ companyId }: EmployeesProps) {
 
     setInviting(true)
     try {
-      // For now, just show a message that invitations will be implemented later
-      alert('Employee invitation feature will be implemented soon!')
+      // Create employee invitation
+      const { data: inviteData, error: inviteError } = await supabase
+        .schema('streamline')
+        .from('employee_invitations')
+        .insert({
+          company_id: companyId,
+          email: inviteForm.email,
+          full_name: inviteForm.fullName,
+          role: inviteForm.role,
+          pay_rate: parseFloat(inviteForm.payRate),
+          pay_period: inviteForm.payPeriod,
+          status: 'pending',
+          invited_by: user.id
+        })
+        .select()
+        .single()
+
+      if (inviteError) throw inviteError
+
+      alert('Employee invitation sent successfully!')
       
       // Reset form
       setInviteForm({
@@ -185,6 +227,9 @@ export default function Employees({ companyId }: EmployeesProps) {
         payPeriod: 'hourly'
       })
       setShowInviteForm(false)
+      
+      // Refresh employee list
+      fetchEmployees()
       
     } catch (error) {
       console.error('Error inviting employee:', error)
@@ -229,9 +274,26 @@ export default function Employees({ companyId }: EmployeesProps) {
       {/* Employee List */}
       <div className="bg-white shadow rounded-lg">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">
-            Team Members ({employees.length})
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-medium text-gray-900">
+              Team Members ({employees.length})
+            </h3>
+            
+            {/* Filter Dropdown */}
+            <div className="flex items-center space-x-2">
+              <label className="text-sm font-medium text-gray-700">Filter:</label>
+              <select
+                value={filter}
+                onChange={(e) => setFilter(e.target.value as 'all' | 'active' | 'inactive' | 'pending')}
+                className="border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+              >
+                <option value="all">All Members</option>
+                <option value="active">Active Employees</option>
+                <option value="inactive">Inactive Employees</option>
+                <option value="pending">Pending Invitations</option>
+              </select>
+            </div>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
