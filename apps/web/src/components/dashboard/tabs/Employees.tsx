@@ -50,6 +50,7 @@ export default function Employees({ companyId }: EmployeesProps) {
     try {
       // Fetch existing employees
       const { data: employeesData, error: employeesError } = await supabase
+        .schema('streamline')
         .from('company_members')
         .select(`
           user_id,
@@ -64,22 +65,24 @@ export default function Employees({ companyId }: EmployeesProps) {
 
       if (employeesError) throw employeesError
 
-      // Fetch pending invitations
-      const { data: invitationsData, error: invitationsError } = await supabase
-        .from('employee_invitations')
-        .select(`
-          id,
-          email,
-          full_name,
-          role,
-          pay_rate,
-          pay_period,
-          status
-        `)
-        .eq('company_id', companyId)
-        .eq('status', 'pending')
+      // TODO: Fetch pending invitations (table doesn't exist yet)
+      // const { data: invitationsData, error: invitationsError } = await supabase
+      //   .schema('streamline')
+      //   .from('employee_invitations')
+      //   .select(`
+      //     id,
+      //     email,
+      //     full_name,
+      //     role,
+      //     pay_rate,
+      //     pay_period,
+      //     status
+      //   `)
+      //   .eq('company_id', companyId)
+      //   .eq('status', 'pending')
 
-      if (invitationsError) throw invitationsError
+      // if (invitationsError) throw invitationsError
+      const invitationsData = [] // Placeholder until table is created
 
       // Format existing employees
       const formattedEmployees = employeesData?.map(emp => ({
@@ -133,6 +136,7 @@ export default function Employees({ companyId }: EmployeesProps) {
     setSaving(true)
     try {
       const { error } = await supabase
+        .schema('streamline')
         .from('company_members')
         .update({ pay_rate: parseFloat(editPayRate) })
         .eq('user_id', userId)
@@ -164,43 +168,13 @@ export default function Employees({ companyId }: EmployeesProps) {
     }
 
     if (!user?.id) {
-      alert('User not authenticated')
       return
     }
 
     setInviting(true)
     try {
-      // Create employee invitation
-      const { data: inviteData, error: inviteError } = await supabase
-        .from('employee_invitations')
-        .insert({
-          company_id: companyId,
-          email: inviteForm.email,
-          full_name: inviteForm.fullName,
-          role: inviteForm.role,
-          pay_rate: parseFloat(inviteForm.payRate),
-          pay_period: inviteForm.payPeriod,
-          invited_by: user.id
-        })
-        .select()
-        .single()
-
-      if (inviteError) throw inviteError
-
-      // Send email invitation (mock for now)
-      const inviteUrl = `${window.location.origin}/invite/${inviteData.token}`
-      
-      // Mock email sending
-      console.log('Sending invitation email:', {
-        to: inviteForm.email,
-        fullName: inviteForm.fullName,
-        companyName: 'Your Company', // You might want to fetch this
-        role: inviteForm.role,
-        inviteUrl,
-        invitedBy: 'Admin' // You might want to fetch current user name
-      })
-
-      alert('Employee invitation sent successfully!')
+      // For now, just show a message that invitations will be implemented later
+      alert('Employee invitation feature will be implemented soon!')
       
       // Reset form
       setInviteForm({

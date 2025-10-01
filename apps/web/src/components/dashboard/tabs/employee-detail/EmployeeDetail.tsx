@@ -61,7 +61,6 @@ export default function EmployeeDetail({ employeeId, companyId, onBack }: Employ
           role,
           pay_rate,
           pay_period,
-          created_at,
           profiles!inner (
             id,
             full_name
@@ -160,7 +159,7 @@ export default function EmployeeDetail({ employeeId, companyId, onBack }: Employ
         pay_period: employeeData.pay_period,
         type: 'employee',
         company_id: employeeData.company_id,
-        join_date: employeeData.created_at,
+        join_date: new Date().toISOString(), // We'll use current date as fallback since company_members doesn't have created_at
         is_active: true, // We can add this field later
         total_hours_this_week: calculateTotalHours(weekHours || []),
         total_hours_this_month: calculateTotalHours(monthHours || []),
