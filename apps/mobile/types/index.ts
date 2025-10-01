@@ -24,6 +24,7 @@ export interface Job {
   address: string | null;
   company_id: string;
   is_archived: boolean;
+  is_system_default?: boolean;
 }
 
 export interface Timesheet {

@@ -105,13 +105,13 @@ export default function SettingsTab({ companyId, onSettingsUpdate }: SettingsTab
       if (companyError) throw companyError
       setCompanyData(company)
 
-      // Load jobs
+      // Load jobs using the active jobs view
       const { data: jobsData } = await supabase
         .schema('streamline')
-        .from('jobs')
-        .select('*')
+        .from('v_active_jobs')
+        .select('id, name, address, is_archived, is_system_default, created_at, should_display_in_ui, job_type_label')
         .eq('company_id', companyId)
-        .eq('is_archived', false)
+        .eq('should_display_in_ui', true)
         .order('name')
 
       setJobs(jobsData || [])

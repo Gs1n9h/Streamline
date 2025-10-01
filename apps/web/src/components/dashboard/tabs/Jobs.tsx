@@ -11,6 +11,8 @@ interface Job {
   is_archived: boolean
   is_system_default?: boolean
   created_at: string
+  should_display_in_ui?: boolean
+  job_type_label?: string
 }
 
 interface JobsProps {
@@ -29,10 +31,10 @@ export default function Jobs({ companyId }: JobsProps) {
     try {
       const { data, error } = await supabase
         .schema('streamline')
-        .from('jobs')
-        .select('id, name, address, is_archived, is_system_default, created_at')
+        .from('v_active_jobs')
+        .select('id, name, address, is_archived, is_system_default, created_at, should_display_in_ui, job_type_label')
         .eq('company_id', companyId)
-        .eq('is_archived', false)
+        .eq('should_display_in_ui', true) // Only show jobs that should be visible
         .order('is_system_default', { ascending: false }) // System defaults first
         .order('created_at', { ascending: false })
 
@@ -216,9 +218,9 @@ export default function Jobs({ companyId }: JobsProps) {
                         <div className="text-sm font-medium text-gray-900">
                           {job.name}
                         </div>
-                        {job.is_system_default && (
+                        {job.job_type_label && job.job_type_label !== 'Regular Job' && (
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            System Default
+                            {job.job_type_label}
                           </span>
                         )}
                       </div>

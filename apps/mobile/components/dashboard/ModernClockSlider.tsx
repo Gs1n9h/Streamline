@@ -158,7 +158,7 @@ export default function ModernClockSlider({
         <View style={styles.timeDisplay}>
           <Text style={styles.timeLabel}>Time Elapsed</Text>
           <Text style={styles.timeValue}>{elapsedTime}</Text>
-          {currentJob && (
+          {currentJob && !currentJob.is_system_default && (
             <View style={styles.jobInfo}>
               <Text style={styles.jobLabel}>Working on:</Text>
               <Text style={styles.jobName}>{currentJob.name}</Text>
