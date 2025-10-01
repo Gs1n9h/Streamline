@@ -9,6 +9,7 @@ interface Job {
   name: string
   address: string | null
   is_archived: boolean
+  is_system_default?: boolean
   created_at: string
 }
 
@@ -27,10 +28,12 @@ export default function Jobs({ companyId }: JobsProps) {
   const fetchJobs = async () => {
     try {
       const { data, error } = await supabase
+        .schema('streamline')
         .from('jobs')
-        .select('*')
+        .select('id, name, address, is_archived, is_system_default, created_at')
         .eq('company_id', companyId)
         .eq('is_archived', false)
+        .order('is_system_default', { ascending: false }) // System defaults first
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -53,6 +56,7 @@ export default function Jobs({ companyId }: JobsProps) {
     setSaving(true)
     try {
       const { data, error } = await supabase
+        .schema('streamline')
         .from('jobs')
         .insert({
           name: newJobName.trim(),
@@ -76,11 +80,17 @@ export default function Jobs({ companyId }: JobsProps) {
     }
   }
 
-  const handleArchiveJob = async (jobId: string) => {
+  const handleArchiveJob = async (jobId: string, isSystemDefault?: boolean) => {
+    if (isSystemDefault) {
+      alert('Cannot archive system default job. This job is required for when job tracking is disabled.')
+      return
+    }
+
     if (!confirm('Are you sure you want to archive this job?')) return
 
     try {
       const { error } = await supabase
+        .schema('streamline')
         .from('jobs')
         .update({ is_archived: true })
         .eq('id', jobId)
@@ -202,8 +212,15 @@ export default function Jobs({ companyId }: JobsProps) {
                       </div>
                     </div>
                     <div className="ml-4">
-                      <div className="text-sm font-medium text-gray-900">
-                        {job.name}
+                      <div className="flex items-center space-x-2">
+                        <div className="text-sm font-medium text-gray-900">
+                          {job.name}
+                        </div>
+                        {job.is_system_default && (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            System Default
+                          </span>
+                        )}
                       </div>
                       {job.address && (
                         <div className="text-sm text-gray-500 flex items-center">
@@ -213,6 +230,9 @@ export default function Jobs({ companyId }: JobsProps) {
                       )}
                       <div className="text-xs text-gray-400">
                         Created {new Date(job.created_at).toLocaleDateString()}
+                        {job.is_system_default && (
+                          <span className="ml-2 text-blue-600">• Auto-created for job tracking</span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -220,12 +240,23 @@ export default function Jobs({ companyId }: JobsProps) {
                     <button className="text-indigo-600 hover:text-indigo-900">
                       <Edit className="h-4 w-4" />
                     </button>
-                    <button
-                      onClick={() => handleArchiveJob(job.id)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    {!job.is_system_default ? (
+                      <button
+                        onClick={() => handleArchiveJob(job.id, job.is_system_default)}
+                        className="text-red-600 hover:text-red-900"
+                        title="Archive job"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => alert('Cannot delete system default job. This job is required for when job tracking is disabled.')}
+                        className="text-gray-400 cursor-not-allowed"
+                        title="Cannot delete system default job"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

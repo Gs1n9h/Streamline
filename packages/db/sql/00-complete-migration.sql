@@ -688,6 +688,91 @@ CREATE POLICY "Admins can manage invitations for their companies" ON streamline.
     )
   );
 
+-- ========= GENERAL WORK JOB SYSTEM =========
+-- Ensures every company has a system default job for when job tracking is disabled
+
+-- Add is_system_default column to jobs table
+ALTER TABLE streamline.jobs 
+ADD COLUMN IF NOT EXISTS is_system_default BOOLEAN DEFAULT FALSE;
+
+-- Create indexes and constraints
+CREATE INDEX IF NOT EXISTS idx_jobs_system_default 
+ON streamline.jobs (company_id, is_system_default) 
+WHERE is_system_default = TRUE;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_one_system_default_per_company 
+ON streamline.jobs (company_id) 
+WHERE is_system_default = TRUE;
+
+ALTER TABLE streamline.jobs 
+ADD CONSTRAINT IF NOT EXISTS chk_system_default_not_archived 
+  CHECK (NOT (is_system_default = TRUE AND is_archived = TRUE));
+
+-- RLS policies to protect system defaults
+CREATE POLICY IF NOT EXISTS "Users cannot create system default jobs" ON streamline.jobs
+  FOR INSERT WITH CHECK (is_system_default = FALSE OR is_system_default IS NULL);
+
+CREATE POLICY IF NOT EXISTS "System default jobs cannot be deleted" ON streamline.jobs
+  FOR DELETE USING (is_system_default = FALSE OR is_system_default IS NULL);
+
+CREATE POLICY IF NOT EXISTS "System default jobs cannot be archived" ON streamline.jobs
+  FOR UPDATE USING (
+    CASE 
+      WHEN OLD.is_system_default = TRUE THEN 
+        (NEW.is_archived = OLD.is_archived AND OLD.is_archived = FALSE)
+      ELSE TRUE
+    END
+  );
+
+-- Function to ensure company has default job
+CREATE OR REPLACE FUNCTION streamline.ensure_company_has_default_job(p_company_id UUID)
+RETURNS UUID AS $$
+DECLARE
+  v_default_job_id UUID;
+  v_company_name TEXT;
+BEGIN
+  SELECT id INTO v_default_job_id
+  FROM streamline.jobs
+  WHERE company_id = p_company_id AND is_system_default = TRUE AND is_archived = FALSE
+  LIMIT 1;
+  
+  IF v_default_job_id IS NOT NULL THEN
+    UPDATE streamline.companies SET default_job_id = v_default_job_id
+    WHERE id = p_company_id AND (default_job_id IS NULL OR default_job_id != v_default_job_id);
+    RETURN v_default_job_id;
+  END IF;
+  
+  SELECT name INTO v_company_name FROM streamline.companies WHERE id = p_company_id;
+  
+  INSERT INTO streamline.jobs (name, address, company_id, is_archived, is_system_default)
+  VALUES ('General Work', COALESCE(v_company_name, 'Company') || ' - Default Work Location', 
+          p_company_id, FALSE, TRUE)
+  RETURNING id INTO v_default_job_id;
+  
+  UPDATE streamline.companies SET default_job_id = v_default_job_id WHERE id = p_company_id;
+  
+  RETURN v_default_job_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger for auto-creating default job on company insert
+CREATE OR REPLACE FUNCTION streamline.trigger_create_default_job()
+RETURNS TRIGGER AS $$
+BEGIN
+  PERFORM streamline.ensure_company_has_default_job(NEW.id);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS trigger_auto_create_default_job ON streamline.companies;
+CREATE TRIGGER trigger_auto_create_default_job
+  AFTER INSERT ON streamline.companies
+  FOR EACH ROW
+  EXECUTE FUNCTION streamline.trigger_create_default_job();
+
+-- Grant permissions
+GRANT EXECUTE ON FUNCTION streamline.ensure_company_has_default_job(UUID) TO authenticated;
+
 -- ========= SEED DATA =========
 
 -- Insert default subscription plans

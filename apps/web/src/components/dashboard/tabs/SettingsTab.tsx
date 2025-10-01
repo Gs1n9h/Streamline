@@ -38,6 +38,7 @@ interface Job {
   name: string
   address: string
   is_archived: boolean
+  is_system_default?: boolean
 }
 
 interface Employee {
@@ -236,7 +237,38 @@ export default function SettingsTab({ companyId, onSettingsUpdate }: SettingsTab
     }
   }
 
-  const updateCompanyData = (field: keyof CompanyData, value: any) => {
+  const updateCompanyData = async (field: keyof CompanyData, value: any) => {
+    if (!companyData) return
+
+    // Special handling for job_tracking_enabled toggle
+    if (field === 'job_tracking_enabled' && value === false) {
+      try {
+        // Ensure company has a default job before disabling job tracking
+        const { data: defaultJobId, error } = await supabase.rpc(
+          'ensure_company_has_default_job',
+          { p_company_id: companyData.id }
+        )
+
+        if (error) throw error
+
+        // Update both job_tracking_enabled and default_job_id
+        setCompanyData(prev => {
+          if (!prev) return prev
+          return {
+            ...prev,
+            job_tracking_enabled: false,
+            default_job_id: defaultJobId
+          }
+        })
+        return
+      } catch (error) {
+        console.error('Error ensuring default job:', error)
+        alert('Failed to disable job tracking. Please try again.')
+        return
+      }
+    }
+
+    // Regular field update
     setCompanyData(prev => {
       if (!prev) return prev
       
