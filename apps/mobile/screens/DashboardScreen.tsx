@@ -575,25 +575,6 @@ export default function DashboardScreen() {
           <Text style={styles.userName}>
             {userProfile?.full_name || 'User'}
           </Text>
-          {currentGeofences.length > 0 && (
-            <View style={styles.geofenceStatus}>
-              <Text style={styles.geofenceStatusText}>
-                📍 In: {currentGeofences.join(', ')}
-              </Text>
-            </View>
-          )}
-          {backgroundTrackingActive && (
-            <View style={styles.trackingStatus}>
-              <Text style={styles.trackingStatusText}>
-                📍 Location tracking active
-              </Text>
-              {locationSettings && (
-                <Text style={[styles.trackingStatusText, { fontSize: 12, opacity: 0.8 }]}>
-                  {locationSettings.location_ping_interval_seconds}s intervals
-                </Text>
-              )}
-            </View>
-          )}
           {locationSettings && !locationSettings.location_tracking_enabled && (
             <View style={[styles.trackingStatus, { backgroundColor: '#fef3c7', borderColor: '#f59e0b' }]}>
               <Text style={[styles.trackingStatusText, { color: '#92400e' }]}>
