@@ -44,8 +44,26 @@ CREATE POLICY "Users can view job assignments for their companies" ON streamline
     )
   );
 
-CREATE POLICY "Admins can manage job assignments for their companies" ON streamline.job_assignments
-  FOR ALL USING (
+CREATE POLICY "Admins can insert job assignments for their companies" ON streamline.job_assignments
+  FOR INSERT WITH CHECK (
+    company_id IN (
+      SELECT company_id 
+      FROM streamline.company_members 
+      WHERE user_id = auth.uid() AND role = 'admin'
+    )
+  );
+
+CREATE POLICY "Admins can update job assignments for their companies" ON streamline.job_assignments
+  FOR UPDATE USING (
+    company_id IN (
+      SELECT company_id 
+      FROM streamline.company_members 
+      WHERE user_id = auth.uid() AND role = 'admin'
+    )
+  );
+
+CREATE POLICY "Admins can delete job assignments for their companies" ON streamline.job_assignments
+  FOR DELETE USING (
     company_id IN (
       SELECT company_id 
       FROM streamline.company_members 

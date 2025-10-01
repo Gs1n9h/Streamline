@@ -145,7 +145,7 @@ export default function LiveMap({ locations, geofences = [], companyId }: LiveMa
   }
 
   return (
-    <div className="h-96 w-full rounded-lg overflow-hidden border border-gray-200">
+    <div className="h-96 w-full rounded-lg overflow-hidden border border-gray-200 relative z-10">
       <MapContainer
         center={getMapCenter()}
         zoom={getMapZoom()}

@@ -46,8 +46,7 @@ BEGIN
     location_tracking_enabled = COALESCE(p_location_tracking_enabled, location_tracking_enabled),
     location_ping_interval_seconds = COALESCE(p_location_ping_interval_seconds, location_ping_interval_seconds),
     location_ping_distance_meters = COALESCE(p_location_ping_distance_meters, location_ping_distance_meters),
-    geofencing_enabled = COALESCE(p_geofencing_enabled, geofencing_enabled),
-    updated_at = NOW()
+    geofencing_enabled = COALESCE(p_geofencing_enabled, geofencing_enabled)
   WHERE id = p_company_id;
   
   RETURN FOUND;

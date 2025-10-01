@@ -23,6 +23,13 @@ CREATE POLICY "Allow members to see their own companies" ON streamline.companies
 CREATE POLICY "Allow authenticated users to create companies" ON streamline.companies
   FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
 
+-- Policy: Allow admins to update their company settings
+CREATE POLICY "Allow admins to update their company" ON streamline.companies
+  FOR UPDATE USING (EXISTS (
+    SELECT 1 FROM streamline.company_members cm
+    WHERE cm.company_id = companies.id AND cm.user_id = auth.uid() AND cm.role = 'admin'
+  ));
+
 -- Policy: Allow members to see their own membership details
 CREATE POLICY "Allow users to see their own memberships" ON streamline.company_members
   FOR SELECT USING (auth.uid() = user_id);

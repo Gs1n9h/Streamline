@@ -35,6 +35,10 @@ export default function Dashboard() {
       // Check if this is a welcome redirect
       if (searchParams.get('welcome') === 'true') {
         setShowWelcome(true)
+        // Clear the welcome parameter from URL to prevent showing on refresh
+        const newUrl = new URL(window.location.href)
+        newUrl.searchParams.delete('welcome')
+        window.history.replaceState({}, '', newUrl.toString())
       }
     }
   }, [user, loading, router, searchParams])

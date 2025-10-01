@@ -129,8 +129,22 @@ class BackgroundLocationService {
       if (error) throw error;
       
       if (data && data.length > 0) {
-        this.locationSettings = data[0];
+        const newSettings = data[0];
+        const settingsChanged = !this.locationSettings || 
+          this.locationSettings.location_tracking_enabled !== newSettings.location_tracking_enabled ||
+          this.locationSettings.location_ping_interval_seconds !== newSettings.location_ping_interval_seconds ||
+          this.locationSettings.location_ping_distance_meters !== newSettings.location_ping_distance_meters ||
+          this.locationSettings.geofencing_enabled !== newSettings.geofencing_enabled;
+
+        this.locationSettings = newSettings;
         console.log('🎯 Location settings loaded:', this.locationSettings);
+
+        // If settings changed and tracking is active, restart tracking with new settings
+        if (settingsChanged && this.isTracking) {
+          console.log('🎯 Location settings changed, restarting tracking with new settings');
+          await this.stopTracking();
+          await this.startTracking();
+        }
       }
     } catch (error) {
       console.error('❌ Error loading location settings:', error);
@@ -142,6 +156,12 @@ class BackgroundLocationService {
         geofencing_enabled: true
       };
     }
+  }
+
+  // Public method to refresh location settings
+  async refreshLocationSettings() {
+    console.log('🎯 Refreshing location settings...');
+    await this.loadLocationSettings();
   }
 
   // Start location tracking (tries background first, falls back to foreground)
@@ -207,7 +227,7 @@ class BackgroundLocationService {
           notificationBody: 'Tracking your location for work hours',
           notificationColor: '#007AFF',
         },
-        pausesLocationUpdatesAutomatically: false,
+        pausesUpdatesAutomatically: false,
       });
 
       this.isTracking = true;
@@ -449,6 +469,11 @@ class BackgroundLocationService {
     
     // Otherwise it's background tracking
     return { isActive: true, mode: 'background' };
+  }
+
+  // Get current location settings
+  getLocationSettings(): LocationSettings | null {
+    return this.locationSettings;
   }
 }
 

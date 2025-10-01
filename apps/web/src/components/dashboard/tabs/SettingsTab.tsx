@@ -78,6 +78,7 @@ export default function SettingsTab({ companyId }: SettingsTabProps) {
     try {
       // Get company data
       const { data: company, error: companyError } = await supabase
+        .schema('streamline')
         .from('companies')
         .select('*')
         .eq('id', companyId)
@@ -88,6 +89,7 @@ export default function SettingsTab({ companyId }: SettingsTabProps) {
 
       // Load jobs
       const { data: jobsData } = await supabase
+        .schema('streamline')
         .from('jobs')
         .select('*')
         .eq('company_id', companyId)
@@ -117,6 +119,7 @@ export default function SettingsTab({ companyId }: SettingsTabProps) {
 
       // Load job assignments
       const { data: assignmentsData } = await supabase
+        .schema('streamline')
         .from('job_assignments')
         .select('*')
         .eq('company_id', companyId)
@@ -188,6 +191,7 @@ export default function SettingsTab({ companyId }: SettingsTabProps) {
       if (existingAssignment) {
         // Toggle assignment
         const { error } = await supabase
+          .schema('streamline')
           .from('job_assignments')
           .update({ is_active: !existingAssignment.is_active })
           .eq('id', existingAssignment.id)

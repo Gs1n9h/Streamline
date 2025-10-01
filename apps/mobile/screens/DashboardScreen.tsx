@@ -38,6 +38,7 @@ export default function DashboardScreen() {
   const [jobSelectionRequired, setJobSelectionRequired] = useState(true);
   const [currentGeofences, setCurrentGeofences] = useState<string[]>([]);
   const [backgroundTrackingActive, setBackgroundTrackingActive] = useState(false);
+  const [locationSettings, setLocationSettings] = useState<any>(null);
 
   const fetchJobs = async () => {
     try {
@@ -256,12 +257,18 @@ export default function DashboardScreen() {
 
       setBackgroundTrackingActive(isActive);
       
+      // Also update location settings display
+      const settings = backgroundLocationService.getLocationSettings();
+      setLocationSettings(settings);
+      
       console.log('🎯 Background tracking status:', {
         isActive,
         hasPermission,
         isSupported,
         mode: trackingStatus.mode,
-        isClockedIn: !!activeTimesheet
+        isClockedIn: !!activeTimesheet,
+        locationTrackingEnabled: settings?.location_tracking_enabled,
+        pingInterval: settings?.location_ping_interval_seconds
       });
     } catch (error) {
       console.error('❌ Error checking background tracking status:', error);
@@ -314,6 +321,20 @@ export default function DashboardScreen() {
 
     return () => clearInterval(interval);
   }, [user, activeTimesheet]);
+
+  // Periodic location settings refresh - check for settings changes every 60 seconds
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        console.log('🔄 Refreshing location settings...');
+        await backgroundLocationService.refreshLocationSettings();
+      } catch (error) {
+        console.error('❌ Error refreshing location settings:', error);
+      }
+    }, 60000); // 60 seconds
+
+    return () => clearInterval(interval);
+  }, []);
 
   const handleClockAction = async (jobId: string | null, action: 'in' | 'out') => {
     setClockActionLoading(true);
@@ -565,6 +586,18 @@ export default function DashboardScreen() {
             <View style={styles.trackingStatus}>
               <Text style={styles.trackingStatusText}>
                 📍 Location tracking active
+              </Text>
+              {locationSettings && (
+                <Text style={[styles.trackingStatusText, { fontSize: 12, opacity: 0.8 }]}>
+                  {locationSettings.location_ping_interval_seconds}s intervals
+                </Text>
+              )}
+            </View>
+          )}
+          {locationSettings && !locationSettings.location_tracking_enabled && (
+            <View style={[styles.trackingStatus, { backgroundColor: '#fef3c7', borderColor: '#f59e0b' }]}>
+              <Text style={[styles.trackingStatusText, { color: '#92400e' }]}>
+                📍 Location tracking disabled by admin
               </Text>
             </View>
           )}
